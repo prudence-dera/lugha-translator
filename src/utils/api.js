@@ -13,13 +13,16 @@ const callClaude = async (prompt, systemPrompt = '') => {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
+       model: 'claude-sonnet-4-5',
       max_tokens: 1000,
       system: systemPrompt,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
-  if (!response.ok) throw new Error(`API error: ${response.status}`);
+     if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`API error ${response.status}: ${body}`);
+  }
   const data = await response.json();
   return data.content?.[0]?.text?.trim() || '';
 };
@@ -50,4 +53,24 @@ export const getLanguageInfo = async (languageName) => {
     `Give me a 2-sentence description of the ${languageName} language — where it's spoken, and one interesting cultural fact. Be concise.`,
     'You are a linguistics expert. Be brief and interesting.'
   );
+};
+
+export const translateImage = async (base64, mediaType, toLang) => {
+  const raw = await callClaude(
+    [
+      {
+        type: 'image',
+        source: { type: 'base64', media_type: mediaType, data: base64 },
+      },
+      {
+        type: 'text',
+        text: `Read all the text in this image and translate it into ${toLang}. Respond with ONLY a JSON object, no markdown, in exactly this shape: {"detectedLanguage": "<language of the text>", "originalText": "<the text as it appears>", "translatedText": "<translation into ${toLang}>"}. If there is no readable text, use empty strings.`,
+      },
+    ],
+    'You read text in images and translate it accurately. Respond with valid JSON only.'
+  );
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error(`No JSON in response: ${raw.slice(0, 200)}`);
+  return JSON.parse(raw.slice(start, end + 1));
 };

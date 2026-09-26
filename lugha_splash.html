@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lugha Splash Screen Export</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #e5e5e5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: Georgia, serif;
+    gap: 24px;
+  }
+
+  .instructions {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 16px 24px;
+    font-family: sans-serif;
+    font-size: 14px;
+    color: #333;
+    max-width: 600px;
+    line-height: 1.6;
+  }
+
+  .instructions strong { color: #C1440E; }
+  .instructions code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; }
+
+  /* Splash — exactly 1024x500 */
+  .splash {
+    width: 1024px;
+    height: 500px;
+    background: #C1440E;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  }
+
+  /* Subtle bubble hint top left */
+  .bubble-hint {
+    position: absolute;
+    top: 60px;
+    left: 80px;
+    width: 360px;
+    height: 220px;
+    border-radius: 40px;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .bubble-hint::after {
+    content: '';
+    position: absolute;
+    bottom: -28px;
+    left: 60px;
+    width: 0;
+    height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid rgba(255,255,255,0.06);
+    border-top: 30px solid rgba(255,255,255,0.06);
+  }
+
+  /* Main wordmark */
+  .wordmark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0px;
+  }
+
+  .wordmark-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 160px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+    letter-spacing: -4px;
+    text-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    user-select: none;
+  }
+
+  .wordmark-tagline {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 3px;
+    margin-top: -8px;
+    user-select: none;
+  }
+
+  /* Green dot accent */
+  .dot {
+    position: absolute;
+    top: 56px;
+    right: 100px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 2px 8px rgba(74,222,128,0.4);
+  }
+
+  /* Kente stripe band at bottom */
+  .stripe-gold-top {
+    position: absolute;
+    bottom: 54px;
+    left: 0; right: 0;
+    height: 42px;
+    background: #FFB703;
+  }
+
+  .stripe-navy {
+    position: absolute;
+    bottom: 26px;
+    left: 0; right: 0;
+    height: 28px;
+    background: #023047;
+  }
+
+  .stripe-gold-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 26px;
+    background: #FFB703;
+  }
+
+  .kente-diamonds {
+    position: absolute;
+    bottom: 54px;
+    left: 0; right: 0;
+    height: 42px;
+  }
+
+  .kente-diamonds svg {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+
+<div class="instructions">
+  <strong>How to export as PNG:</strong><br>
+  1. Press <strong>Cmd + Option + I</strong> to open DevTools<br>
+  2. Press <strong>Cmd + F</strong> and type <code>splash</code><br>
+  3. Click the <code>&lt;div class="splash"&gt;</code> line to highlight it<br>
+  4. Right-click it → <strong>Capture node screenshot</strong><br>
+  5. Save to your Lugha folder — this is your 1024×500 splash screen!
+</div>
+
+<div class="splash">
+  <div class="bubble-hint"></div>
+
+  <div class="wordmark">
+    <div class="wordmark-title">Lugha</div>
+    <div class="wordmark-tagline">African language translator</div>
+  </div>
+
+  <div class="dot"></div>
+
+  <div class="stripe-gold-top"></div>
+
+  <div class="kente-diamonds">
+    <svg viewBox="0 0 1024 42" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      <polygon points="16,0 32,21 16,42 0,21" fill="#C1440E"/>
+      <polygon points="48,0 64,21 48,42 32,21" fill="#C1440E"/>
+      <polygon points="80,0 96,21 80,42 64,21" fill="#C1440E"/>
+      <polygon points="112,0 128,21 112,42 96,21" fill="#C1440E"/>
+      <polygon points="144,0 160,21 144,42 128,21" fill="#C1440E"/>
+      <polygon points="176,0 192,21 176,42 160,21" fill="#C1440E"/>
+      <polygon points="208,0 224,21 208,42 192,21" fill="#C1440E"/>
+      <polygon points="240,0 256,21 240,42 224,21" fill="#C1440E"/>
+      <polygon points="272,0 288,21 272,42 256,21" fill="#C1440E"/>
+      <polygon points="304,0 320,21 304,42 288,21" fill="#C1440E"/>
+      <polygon points="336,0 352,21 336,42 320,21" fill="#C1440E"/>
+      <polygon points="368,0 384,21 368,42 352,21" fill="#C1440E"/>
+      <polygon points="400,0 416,21 400,42 384,21" fill="#C1440E"/>
+      <polygon points="432,0 448,21 432,42 416,21" fill="#C1440E"/>
+      <polygon points="464,0 480,21 464,42 448,21" fill="#C1440E"/>
+      <polygon points="496,0 512,21 496,42 480,21" fill="#C1440E"/>
+      <polygon points="528,0 544,21 528,42 512,21" fill="#C1440E"/>
+      <polygon points="560,0 576,21 560,42 544,21" fill="#C1440E"/>
+      <polygon points="592,0 608,21 592,42 576,21" fill="#C1440E"/>
+      <polygon points="624,0 640,21 624,42 608,21" fill="#C1440E"/>
+      <polygon points="656,0 672,21 656,42 640,21" fill="#C1440E"/>
+      <polygon points="688,0 704,21 688,42 672,21" fill="#C1440E"/>
+      <polygon points="720,0 736,21 720,42 704,21" fill="#C1440E"/>
+      <polygon points="752,0 768,21 752,42 736,21" fill="#C1440E"/>
+      <polygon points="784,0 800,21 784,42 768,21" fill="#C1440E"/>
+      <polygon points="816,0 832,21 816,42 800,21" fill="#C1440E"/>
+      <polygon points="848,0 864,21 848,42 832,21" fill="#C1440E"/>
+      <polygon points="880,0 896,21 880,42 864,21" fill="#C1440E"/>
+      <polygon points="912,0 928,21 912,42 896,21" fill="#C1440E"/>
+      <polygon points="944,0 960,21 944,42 928,21" fill="#C1440E"/>
+      <polygon points="976,0 992,21 976,42 960,21" fill="#C1440E"/>
+      <polygon points="1008,0 1024,21 1008,42 992,21" fill="#C1440E"/>
+    </svg>
+  </div>
+
+  <div class="stripe-navy"></div>
+  <div class="stripe-gold-bottom"></div>
+</div>
+
+</body>
+</html>

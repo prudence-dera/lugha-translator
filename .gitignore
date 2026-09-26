@@ -14,3 +14,7 @@ web-build/
 .env
 .env.local
 .env*.local
+*.dmg
+*.aab
+*.apk
+_Users_*

@@ -5,9 +5,10 @@ import {
   KeyboardAvoidingView, Platform, Share,
 } from 'react-native';
 import * as Speech from 'expo-speech';
+import * as ImagePicker from 'expo-image-picker';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../components/theme';
 import LanguagePicker from '../components/LanguagePicker';
-import { detectLanguage, translateText, getPronunciation } from '../utils/api';
+import { detectLanguage, translateText, getPronunciation, translateImage } from '../utils/api';
 import { saveTranslation } from '../utils/storage';
 import { LANGUAGES } from '../data/languages';
 
@@ -21,6 +22,16 @@ const QUICK_PHRASES = [
   'Please help me',
 ];
 
+// Identify the image format from its data (Claude rejects mismatched types)
+const detectMediaType = (base64) => {
+  if (base64.startsWith('iVBORw0KGgo')) return 'image/png';
+  if (base64.startsWith('R0lGOD')) return 'image/gif';
+  if (base64.startsWith('UklGR')) return 'image/webp';
+  return 'image/jpeg';
+};
+// Stay under the API's 5 MB per-image limit (base64 string length)
+const MAX_BASE64_LENGTH = 4.5 * 1024 * 1024;
+
 export default function TranslatorScreen({ navigation }) {
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
@@ -29,11 +40,14 @@ export default function TranslatorScreen({ navigation }) {
   const [toLang, setToLang] = useState(LANGUAGES.find(l => l.code === 'sw'));
   const [isTranslating, setIsTranslating] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [isLoadingPronunciation, setIsLoadingPronunciation] = useState(false);
   const [showPronunciation, setShowPronunciation] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(null); // 'from' | 'to'
   const [isSpeaking, setIsSpeaking] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const isBusy = isTranslating || isScanning;
 
   const fadeIn = () => {
     fadeAnim.setValue(0);
@@ -81,6 +95,107 @@ export default function TranslatorScreen({ navigation }) {
     }
     setIsTranslating(false);
   };
+
+  // ---------- Camera / photo translation ----------
+
+  const handleCameraPress = () => {
+    Alert.alert('Translate text in a photo', 'Choose a source', [
+      { text: 'Take photo', onPress: () => pickImage('camera') },
+      { text: 'Choose from library', onPress: () => pickImage('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const pickImage = async (source) => {
+    try {
+      const permission = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission needed',
+          source === 'camera'
+            ? 'Allow camera access in Settings to translate photos.'
+            : 'Allow photo access in Settings to translate images.'
+        );
+        return;
+      }
+
+      const options = {
+        mediaTypes: ['images'],
+        allowsEditing: true, // lets the user crop to just the text
+        quality: 0.4,
+        base64: true,
+      };
+
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        Alert.alert('Error', 'Could not read the image. Try another photo.');
+        return;
+      }
+      if (asset.base64.length > MAX_BASE64_LENGTH) {
+        Alert.alert('Image too large', 'Crop closer to the text and try again.');
+        return;
+      }
+
+      const mediaType = detectMediaType(asset.base64);
+      await runImageTranslation(asset.base64, mediaType);
+    } catch (e) {
+      if (source === 'camera') {
+        Alert.alert('Camera unavailable', 'Use "Choose from library" instead.');
+      } else {
+        Alert.alert('Error', 'Could not open your photos.');
+      }
+    }
+  };
+
+  const runImageTranslation = async (base64, mediaType) => {
+    setIsScanning(true);
+    setTranslatedText('');
+    setPronunciation('');
+    setShowPronunciation(false);
+    try {
+      const { detectedLanguage, originalText, translatedText: result } =
+        await translateImage(base64, mediaType, toLang.name);
+
+      if (!originalText?.trim()) {
+        Alert.alert('No text found', 'Try a clearer photo with the text in focus.');
+        setIsScanning(false);
+        return;
+      }
+
+      const match = LANGUAGES.find(
+        l => l.name.toLowerCase() === (detectedLanguage || '').toLowerCase()
+      );
+      if (match) setFromLang(match);
+
+      setInputText(originalText);
+      setTranslatedText(result);
+      fadeIn();
+
+      await saveTranslation({
+        inputText: originalText,
+        translatedText: result,
+        fromLang: match ? match.name : (detectedLanguage || 'Unknown'),
+        toLang: toLang.name,
+        fromFlag: match ? match.flag : '🌐',
+        toFlag: toLang.flag,
+      });
+      } catch (e) {
+      console.log('Image translation error:', e?.message || e);
+      Alert.alert('Error', 'Could not translate this image. Please try again.');
+      }
+    setIsScanning(false);
+  };
+
+  // ---------- Output actions ----------
 
   const handlePronunciation = async () => {
     if (!translatedText) return;
@@ -144,21 +259,6 @@ export default function TranslatorScreen({ navigation }) {
     setShowPronunciation(false);
   };
 
-  const renderPronunciation = (text) => {
-    return text.split('\n').map((line, i) => {
-      const parts = line.replace(/\*\*(.*?)\*\*/g, '§$1§').split('§');
-      return (
-        <Text key={i} style={[styles.pronText, { marginBottom: 4 }]}>
-          {parts.map((part, j) =>
-            j % 2 === 1
-              ? <Text key={j} style={styles.pronBold}>{part}</Text>
-              : part
-          )}
-        </Text>
-      );
-    });
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -207,22 +307,35 @@ export default function TranslatorScreen({ navigation }) {
             <View style={styles.langBadge}>
               <Text style={styles.langBadgeText}>{fromLang.flag} {fromLang.name}</Text>
             </View>
-            <TouchableOpacity
-              style={styles.detectBtn}
-              onPress={handleDetect}
-              disabled={!inputText.trim() || isDetecting}
-            >
-              {isDetecting
-                ? <ActivityIndicator size="small" color={COLORS.accent} />
-                : <Text style={styles.detectText}>Auto-detect</Text>
-              }
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.cameraBtn}
+                onPress={handleCameraPress}
+                disabled={isBusy}
+                accessibilityLabel="Translate text in a photo"
+              >
+                {isScanning
+                  ? <ActivityIndicator size="small" color={COLORS.accent} />
+                  : <Text style={styles.cameraIcon}>📷</Text>
+                }
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.detectBtn}
+                onPress={handleDetect}
+                disabled={!inputText.trim() || isDetecting}
+              >
+                {isDetecting
+                  ? <ActivityIndicator size="small" color={COLORS.accent} />
+                  : <Text style={styles.detectText}>Auto-detect</Text>
+                }
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TextInput
             style={styles.input}
             multiline
-            placeholder="Type or paste text here..."
+            placeholder="Type, paste, or tap 📷 to translate a photo..."
             placeholderTextColor={COLORS.textTertiary}
             value={inputText}
             onChangeText={setInputText}
@@ -241,9 +354,9 @@ export default function TranslatorScreen({ navigation }) {
 
         {/* Translate Button */}
         <TouchableOpacity
-          style={[styles.translateBtn, (!inputText.trim() || isTranslating) && styles.translateBtnDisabled]}
+          style={[styles.translateBtn, (!inputText.trim() || isBusy) && styles.translateBtnDisabled]}
           onPress={handleTranslate}
-          disabled={!inputText.trim() || isTranslating}
+          disabled={!inputText.trim() || isBusy}
         >
           {isTranslating
             ? <ActivityIndicator color={COLORS.white} />
@@ -252,13 +365,13 @@ export default function TranslatorScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Output Card */}
-        {(translatedText || isTranslating) && (
-          <Animated.View style={[styles.card, styles.outputCard, { opacity: fadeAnim }]}>
+        {(translatedText || isBusy) && (
+          <Animated.View style={[styles.card, styles.outputCard, { opacity: translatedText ? fadeAnim : 1 }]}>
             <View style={styles.cardHeader}>
               <View style={[styles.langBadge, styles.langBadgeAccent]}>
                 <Text style={styles.langBadgeTextAccent}>{toLang.flag} {toLang.name}</Text>
               </View>
-              {translatedText && (
+              {translatedText ? (
                 <View style={styles.outputActions}>
                   <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
                     <Text style={styles.actionIcon}>↗</Text>
@@ -267,16 +380,20 @@ export default function TranslatorScreen({ navigation }) {
                     <Text style={styles.actionIcon}>{isSpeaking ? '⏹' : '▶'}</Text>
                   </TouchableOpacity>
                 </View>
-              )}
+              ) : null}
             </View>
 
-            {isTranslating && !translatedText
-              ? <ActivityIndicator style={{ padding: 20 }} color={COLORS.accent} />
-              : <Text style={styles.outputText} selectable>{translatedText}</Text>
-            }
+            {isBusy && !translatedText ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={COLORS.accent} />
+                {isScanning && <Text style={styles.loadingText}>Reading the photo...</Text>}
+              </View>
+            ) : (
+              <Text style={styles.outputText} selectable>{translatedText}</Text>
+            )}
 
             {/* Pronunciation Section */}
-            {translatedText && (
+            {translatedText ? (
               <TouchableOpacity
                 style={styles.pronBtn}
                 onPress={handlePronunciation}
@@ -289,13 +406,13 @@ export default function TranslatorScreen({ navigation }) {
                     </Text>
                 }
               </TouchableOpacity>
-            )}
+            ) : null}
 
-            {showPronunciation && pronunciation && (
+            {showPronunciation && pronunciation ? (
               <View style={styles.pronCard}>
-                {renderPronunciation(pronunciation)}
+                <Text style={styles.pronText}>{pronunciation}</Text>
               </View>
-            )}
+            ) : null}
           </Animated.View>
         )}
 
@@ -322,6 +439,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: 16 },
+
   langBar: {
     flexDirection: 'row', alignItems: 'center', marginBottom: 14,
     backgroundColor: COLORS.white, borderRadius: 14, padding: 6,
@@ -340,12 +458,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginHorizontal: 4,
   },
   swapIcon: { fontSize: 16, color: COLORS.accent },
+
   phrasesScroll: { marginBottom: 14 },
   phraseChip: {
     backgroundColor: COLORS.white, borderRadius: 20, paddingHorizontal: 14,
     paddingVertical: 7, marginRight: 8, borderWidth: 0.5, borderColor: COLORS.border,
   },
   phraseText: { fontSize: 13, color: COLORS.textSecondary },
+
   card: {
     backgroundColor: COLORS.white, borderRadius: 16, marginBottom: 12,
     borderWidth: 0.5, borderColor: COLORS.border, ...SHADOWS.small, overflow: 'hidden',
@@ -357,16 +477,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8,
     borderBottomWidth: 0.5, borderBottomColor: COLORS.border,
   },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   langBadge: {
     backgroundColor: COLORS.surface, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
   },
   langBadgeText: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '500' },
   langBadgeAccent: { backgroundColor: COLORS.accentLight },
   langBadgeTextAccent: { fontSize: 13, color: COLORS.accentText, fontWeight: '500' },
+
+  cameraBtn: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.accentLight,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  cameraIcon: { fontSize: 15 },
   detectBtn: { paddingHorizontal: 10, paddingVertical: 4 },
   detectText: { fontSize: 13, color: COLORS.accent, fontWeight: '500' },
+
   input: {
-    fontSize: 16, color: COLORS.text, padding: 14, minHeight: 110, lineHeight: 24,
+    fontSize: 16, color: COLORS.text, padding: 14, minHeight: 110,
+    lineHeight: 24,
   },
   inputFooter: {
     flexDirection: 'row', justifyContent: 'space-between',
@@ -374,12 +503,20 @@ const styles = StyleSheet.create({
   },
   charCount: { fontSize: 12, color: COLORS.textTertiary },
   clearText: { fontSize: 12, color: COLORS.danger },
+
   translateBtn: {
     backgroundColor: COLORS.accent, borderRadius: 14, paddingVertical: 14,
     alignItems: 'center', marginBottom: 12, ...SHADOWS.small,
   },
   translateBtnDisabled: { backgroundColor: COLORS.textTertiary },
   translateBtnText: { fontSize: 16, fontWeight: '700', color: COLORS.white, letterSpacing: 0.3 },
+
+  loadingRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    padding: 20, gap: 10,
+  },
+  loadingText: { fontSize: 14, color: COLORS.textSecondary },
+
   outputText: { fontSize: 17, color: COLORS.text, padding: 14, lineHeight: 26 },
   outputActions: { flexDirection: 'row', gap: 6 },
   actionBtn: {
@@ -387,6 +524,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   actionIcon: { fontSize: 14, color: COLORS.accent },
+
   pronBtn: {
     borderTopWidth: 0.5, borderTopColor: COLORS.border,
     paddingVertical: 10, paddingHorizontal: 14,
@@ -396,5 +534,4 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentLight, margin: 10, borderRadius: 10, padding: 12,
   },
   pronText: { fontSize: 13, color: COLORS.accentText, lineHeight: 20 },
-  pronBold: { fontWeight: '700', color: COLORS.accentText },
 });
