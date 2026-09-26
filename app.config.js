@@ -14,7 +14,7 @@ export default {
     assetBundlePatterns: ["**/*"],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.yourname.lugha",
+      bundleIdentifier: "com.prudencedera.lugha",
       infoPlist: {
         NSSpeechRecognitionUsageDescription: "Used for text-to-speech playback",
       },
@@ -23,8 +23,17 @@ export default {
       adaptiveIcon: {
         backgroundColor: "#FAFAF8",
       },
-      package: "com.yourname.lugha",
+      package: "com.prudencedera.lugha",
     },
+    plugins: [
+      [
+        "expo-image-picker",
+        {
+          cameraPermission: "Lugha uses your camera to translate text in photos.",
+          photosPermission: "Lugha uses your photos to translate text in images.",
+        },
+      ],
+    ],
     extra: {
       anthropicKey: process.env.EXPO_PUBLIC_ANTHROPIC_KEY,
       eas: {
