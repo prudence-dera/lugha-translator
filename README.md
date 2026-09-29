@@ -1,4 +1,6 @@
 # 🌍 Lugha Translator
+<img width="1024" height="500" alt="image" src="https://github.com/user-attachments/assets/96ce11b9-bac6-483b-aa8f-8f1d37aa2431" />
+
 
 **Lugha** means "language" in Swahili. This app is a mobile-first, AI-powered translator focused on African languages, helping bridge communication gaps across the continent and beyond.
 
