@@ -91,7 +91,7 @@ export default function TranslatorScreen({ navigation }) {
         toFlag: toLang.flag,
       });
     } catch (e) {
-      Alert.alert('Error', 'Translation failed. Please check your connection.');
+      Alert.alert('Error', `Translation failed: ${e.message}`);
     }
     setIsTranslating(false);
   };
