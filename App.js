@@ -6,6 +6,7 @@ import { Text } from 'react-native';
 import TranslatorScreen from './src/screens/TranslatorScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import LanguagesScreen from './src/screens/LanguagesScreen';
+import FeedbackButton from './src/components/FeedbackButton';
 import { COLORS } from './src/components/theme';
 
 const Tab = createBottomTabNavigator();
@@ -28,7 +29,7 @@ export default function App() {
           },
         })}
       >
-        <Tab.Screen name="Translate" component={TranslatorScreen} options={{ title: 'Lugha' }} />
+        <Tab.Screen name="Translate" component={TranslatorScreen} options={{ title: 'Lugha', headerRight: () => <FeedbackButton /> }} />
         <Tab.Screen name="History" component={HistoryScreen} />
         <Tab.Screen name="Languages" component={LanguagesScreen} />
       </Tab.Navigator>

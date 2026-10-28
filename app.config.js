@@ -3,7 +3,7 @@ export default {
     name: "Lugha Translator",
     slug: "lugha-translator",
     owner: "pdera",
-    version: "1.0.0",
+    version: "1.2.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -15,25 +15,33 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.prudencedera.lugha",
-      infoPlist: {
-        NSSpeechRecognitionUsageDescription: "Used for text-to-speech playback",
-      },
+      
     },
-    android: {
+       android: {
       adaptiveIcon: {
-        backgroundColor: "#FAFAF8",
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundImage: "./assets/adaptive-icon-background.png",
+        backgroundColor: "#B8411C",
       },
       package: "com.prudencedera.lugha",
     },
-    plugins: [
-      [
-        "expo-image-picker",
-        {
-          cameraPermission: "Lugha uses your camera to translate text in photos.",
-          photosPermission: "Lugha uses your photos to translate text in images.",
-        },
-      ],
+      plugins: [
+    [
+      "expo-image-picker",
+      {
+        cameraPermission: "Lugha uses your camera to translate text in photos.",
+        photosPermission: "Lugha uses your photos to translate text in images.",
+      },
     ],
+    [
+      "expo-speech-recognition",
+      {
+        microphonePermission: "Lugha uses your microphone so you can speak text to translate.",
+        speechRecognitionPermission: "Lugha uses speech recognition to turn your voice into text.",
+        androidSpeechServicePackages: ["com.google.android.googlequicksearchbox"],
+      },
+    ],
+  ],
     extra: {
       anthropicKey: process.env.EXPO_PUBLIC_ANTHROPIC_KEY,
       eas: {

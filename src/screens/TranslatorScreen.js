@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import useVoiceInput from '../hooks/useVoiceInput';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, Alert, Animated,
@@ -46,6 +47,11 @@ export default function TranslatorScreen({ navigation }) {
   const [pickerOpen, setPickerOpen] = useState(null); // 'from' | 'to'
   const [isSpeaking, setIsSpeaking] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const { isSupported: voiceSupported, isListening, interim, toggle: toggleVoice } = useVoiceInput({
+    language: fromLang,
+    onTranscript: (text) => setInputText(prev => (prev.trim() ? `${prev.trim()} ${text}` : text)),
+  });
 
   const isBusy = isTranslating || isScanning;
 
@@ -188,10 +194,10 @@ export default function TranslatorScreen({ navigation }) {
         fromFlag: match ? match.flag : '🌐',
         toFlag: toLang.flag,
       });
-      } catch (e) {
+    } catch (e) {
       console.log('Image translation error:', e?.message || e);
       Alert.alert('Error', 'Could not translate this image. Please try again.');
-      }
+    }
     setIsScanning(false);
   };
 
@@ -308,6 +314,16 @@ export default function TranslatorScreen({ navigation }) {
               <Text style={styles.langBadgeText}>{fromLang.flag} {fromLang.name}</Text>
             </View>
             <View style={styles.headerActions}>
+              {voiceSupported && (
+                <TouchableOpacity
+                  style={[styles.cameraBtn, isListening && styles.micActive]}
+                  onPress={toggleVoice}
+                  disabled={isBusy}
+                  accessibilityLabel={isListening ? 'Stop listening' : 'Speak to translate'}
+                >
+                  <Text style={styles.cameraIcon}>{isListening ? '⏹' : '🎤'}</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.cameraBtn}
                 onPress={handleCameraPress}
@@ -341,7 +357,7 @@ export default function TranslatorScreen({ navigation }) {
             onChangeText={setInputText}
             textAlignVertical="top"
           />
-
+          {isListening && <Text style={styles.listeningText}>{interim || 'Listening…'}</Text>}
           <View style={styles.inputFooter}>
             <Text style={styles.charCount}>{inputText.length} chars</Text>
             {inputText.length > 0 && (
@@ -402,8 +418,8 @@ export default function TranslatorScreen({ navigation }) {
                 {isLoadingPronunciation
                   ? <ActivityIndicator size="small" color={COLORS.accent} />
                   : <Text style={styles.pronBtnText}>
-                      {showPronunciation ? '▲ Hide pronunciation' : '🔤 Show pronunciation guide'}
-                    </Text>
+                    {showPronunciation ? '▲ Hide pronunciation' : '🔤 Show pronunciation guide'}
+                  </Text>
                 }
               </TouchableOpacity>
             ) : null}
@@ -492,7 +508,8 @@ const styles = StyleSheet.create({
   cameraIcon: { fontSize: 15 },
   detectBtn: { paddingHorizontal: 10, paddingVertical: 4 },
   detectText: { fontSize: 13, color: COLORS.accent, fontWeight: '500' },
-
+  micActive: { backgroundColor: COLORS.danger + '33' },
+  listeningText: { fontSize: 14, color: COLORS.accent, paddingHorizontal: 14, paddingBottom: 6 }, 
   input: {
     fontSize: 16, color: COLORS.text, padding: 14, minHeight: 110,
     lineHeight: 24,
